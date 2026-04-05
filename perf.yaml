@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: perf template
+
+Parameters:
+  GitHubUsername:
+    Description: "GitHub Username for SSH public key"
+    Type: String
+  # AWS CLIコマンドで取得する場合
+  # aws ssm get-parameters --names /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id --region ap-northeast-1
+  Ami:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+
+Resources:
+  PerfInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: Name
+          Value: perf
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 50
+            VolumeType: gp3
+            DeleteOnTermination: true
+      InstanceType: t4g.xlarge
+      ImageId: !Ref Ami
+      SubnetId: !ImportValue IsuPerfMySubnetId
+      PrivateIpAddress: '192.168.1.30'
+      SecurityGroupIds:
+        - !ImportValue IsuPerfMySecurityGroupId
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          useradd -m -s /bin/bash -G sudo isucon
+          echo 'isucon ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/isucon
+          chmod 440 /etc/sudoers.d/isucon
+          GITHUB_USERNAME=${GitHubUsername}
+          mkdir -p /home/isucon/.ssh
+          curl -s https://github.com/$GITHUB_USERNAME.keys >> /home/isucon/.ssh/authorized_keys
+          chown -R isucon:isucon /home/isucon/.ssh
+          chmod 600 /home/isucon/.ssh/authorized_keys
+
+  PerfEIP:
+    Type: AWS::EC2::EIP
+  PerfEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref PerfInstance
+      EIP: !Ref PerfEIP
+
+#
+# Outputs はアカウントのリージョン内でユニーク
+#
+Outputs:
+  IsuPerfPublicIP:
+    Description: "Public IP for accessing perf"
+    Value: !Ref PerfEIP
+    Export:
+      Name: IsuPerfPublicIP

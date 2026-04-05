@@ -8,7 +8,10 @@ include makefiles/perf.mk
 ################################################################################
 .PHONY: setup
 setup: ## ツール群をインストール
-	@scripts/00-setup.sh web
+	@bash -c ' \
+	scripts/00-setup.sh web & \
+	scripts/00-setup.sh perf & \
+	wait;'
 
 .PHONY: deploy
 deploy: ## デプロイ
