@@ -1,6 +1,7 @@
 include makefiles/tool.mk
 include makefiles/aws.mk
 include makefiles/ssh.mk
+include makefiles/perf.mk
 
 ################################################################################
 # Main
