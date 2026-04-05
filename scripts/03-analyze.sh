@@ -55,6 +55,47 @@ analyze_slowquery() {
   fi
 }
 
+# 分析結果(人間用)からベンチ開始・終了日時(スロークエリログの開始・終了)をresult.jsonにマージ
+merge_time_range_to_result_json() {
+  local target_score_dir=$1
+  local input_analyzed_slowquery="$target_score_dir/analyzed_slowquery"
+  local input_analyzed_slowquery_json="$target_score_dir/analyzed_slowquery.json"
+
+  # inputファイルの有無を確認
+  if [[ ! -f "$input_analyzed_slowquery" || ! -f "$input_analyzed_slowquery_json" ]]; then
+    log_error "分析結果が存在しません: $input_analyzed_slowquery or $input_analyzed_slowquery_json"
+    err
+  fi
+
+  # Time rangeから開始日時・終了日時を抽出
+  # grep結果
+  # # Time range: 2025-12-31T08:12:16 to 2025-12-31T08:13:31
+  # # Time range: 2025-12-31T08:12:16 to 2025-12-31T08:13:31
+  # ...
+  local time_range_line
+  local started_at
+  local ended_at
+  time_range_line="$(grep '# Time range:' "$input_analyzed_slowquery" | head -n 1)"
+  if [[ -z "$time_range_line" ]]; then
+    log_error "Time rangeの情報が見つかりません: $input_analyzed_slowquery"
+    err
+  fi
+  started_at="$(echo "$time_range_line" | cut -d ' ' -f4)"
+  ended_at="$(echo "$time_range_line" | cut -d ' ' -f6)"
+
+  # マージ処理
+  jq --arg started_at "$started_at" --arg ended_at "$ended_at" \
+    '.started_at = $started_at | .ended_at = $ended_at' \
+    "$target_score_dir/result.json" >"$target_score_dir/result.tmp.json"
+
+  if [[ -s "$target_score_dir/result.tmp.json" ]]; then
+    log_info "result.jsonにベンチマーク開始・終了日時のマージ成功: $target_score_dir"
+    mv "$target_score_dir/result.tmp.json" "$target_score_dir/result.json"
+  else
+    log_error "result.jsonへのマージ失敗: $target_score_dir"
+    err
+  fi
+}
 start_timer "$@"
 (($# == 0)) || (echo '引数の数は0である必要があります' >&2 && usage)
 readonly DOCKER_PROJECT='analyze'
@@ -63,6 +104,12 @@ readonly DOCKER_PROJECT='analyze'
 for line in results/*; do
   analyze_slowquery "$line" &
   analyze_nginx_access_log "$line" &
+done
+wait
+
+# 分析結果をマージ・TSV変換
+for line in results/*; do
+  merge_time_range_to_result_json "$line" &
 done
 wait
 
