@@ -13,17 +13,26 @@ perf.deploy: ## パフォーマンス計測環境をデプロイ
 # ブラウザで開く
 # ################################################################################
 .PHONY: perf.open
-perf.open: ## Grafana/ClickHouseをブラウザで開く
-	$(eval TARGET_HOST=localhost)
+perf.open: perf.define-variables ## Grafana/ClickHouseをブラウザで開く
 	@open "http://$(TARGET_HOST):8123/play?user=${CLICKHOUSE_USER}&password=${CLICKHOUSE_PASSWORD}"
 	@open "http://$(TARGET_HOST):3000/dashboards"
 
 .PHONY: perf.open-ch
-perf.open-ch: ## ClickHouseのWebUIをブラウザで開く
-	$(eval TARGET_HOST=localhost)
+perf.open-ch: perf.define-variables ## ClickHouseのWebUIをブラウザで開く
 	@open "http://$(TARGET_HOST):8123/play?user=${CLICKHOUSE_USER}&password=${CLICKHOUSE_PASSWORD}"
 
 .PHONY: perf.open-grafana
-perf.open-grafana: ## Grafanaをブラウザで開く
-	$(eval TARGET_HOST=localhost)
+perf.open-grafana: perf.define-variables ## Grafanaをブラウザで開く
 	@open "http://$(TARGET_HOST):3000/dashboards"
+
+################################################################################
+# 変数定義
+################################################################################
+.PHONY: perf.show-defined-variables
+perf.show-defined-variables: perf.define-variables ## makeで定義する変数の表示(デバッグ用)
+	@echo "WEB_HOST_IP:   $(WEB_HOST_IP)"
+	@echo "TARGET_HOST:   $(TARGET_HOST)"
+
+perf.define-variables:
+	$(eval WEB_HOST_IP   := $(shell ssh -F ${SSH_CONFIG_FILE} -G web  | grep '^hostname ' | cut -d ' ' -f2))
+	$(eval TARGET_HOST   := $(if $(shell docker compose exec clickhouse echo 'true' 2>/dev/null),localhost,$(WEB_HOST_IP)))
