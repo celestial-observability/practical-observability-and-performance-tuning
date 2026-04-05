@@ -18,11 +18,13 @@ deploy: ## デプロイ
 
 .PHONY: analyze
 analyze: ## 分析
+	$(eval WEB_HOST_IP   := $(shell ssh -F ${SSH_CONFIG_FILE} -G web  | grep '^hostname ' | cut -d ' ' -f2))
+	$(eval TARGET_HOST   := $(if $(shell docker compose exec clickhouse echo 'true' 2>/dev/null),host.docker.internal,$(WEB_HOST_IP)))
 	@scripts/03-analyze.sh
 	@bash -c ' \
-	scripts/04-store-slow-queries.sh host.docker.internal & \
-	scripts/04-store-nginx-access-runs.sh host.docker.internal & \
-	scripts/04-store-results.sh host.docker.internal & \
+	scripts/04-store-slow-queries.sh $(TARGET_HOST) & \
+	scripts/04-store-nginx-access-runs.sh $(TARGET_HOST) & \
+	scripts/04-store-results.sh $(TARGET_HOST) & \
 	wait;'
 
 .PHONY: bench
