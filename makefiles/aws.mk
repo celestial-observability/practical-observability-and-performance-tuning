@@ -18,6 +18,23 @@ aws.create-cfn: validate-ssh-private-key ## AWSのCFnスタックを作成
 	@echo "$(STACK_NAME): 作成中です(約1分かかります)"
 	@time aws cloudformation wait stack-create-complete --stack-name $(STACK_NAME)
 
+################################################################################
+# SSHの設定
+################################################################################
+.PHONY: aws.setup-ssh-config
+aws.setup-ssh-config: validate-ssh-private-key ## SSH設定をセットアップ
+	$(eval STACK_ID := $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) --query 'Stacks[0].StackId' --output text))
+	$(eval WEB_HOST_IP := $(shell aws ec2 describe-instances --filters "Name=tag:aws:cloudformation:stack-id,Values=$(STACK_ID)" 'Name=tag:Name,Values=web' --query 'Reservations[0].Instances[0].PublicIpAddress' --output text))
+	$(eval BENCH_HOST_IP := $(shell aws ec2 describe-instances --filters "Name=tag:aws:cloudformation:stack-id,Values=$(STACK_ID)" 'Name=tag:Name,Values=bench' --query 'Reservations[0].Instances[0].PublicIpAddress' --output text))
+	@mkdir -p .ssh
+	@sed \
+		-e "s|{{SSH_PRIVATE_KEY_PATH}}|${SSH_PRIVATE_KEY_PATH}|g" \
+		-e "s|{{WEB_HOST_IP}}|$(WEB_HOST_IP)|g" \
+		-e "s|{{BENCH_HOST_IP}}|$(BENCH_HOST_IP)|g" \
+		.ssh/ssh_config.tmpl > .ssh/config
+	@ssh web   -F "${SSH_CONFIG_FILE}" 'echo "ssh web:   OK"' || echo 'ssh web:   SSH NG'
+	@ssh bench -F "${SSH_CONFIG_FILE}" 'echo "ssh bench: OK"' || echo 'ssh bench: SSH NG'
+
 # SSH秘密鍵の検証
 # SSH_PRIVATE_KEY_PATHが指す秘密鍵の公開鍵がGitHubアカウントに登録されているか確認
 # 理由: EC2に登録する公開鍵は https://github.com/${GITHUB_USERNAME}.keys を利用しているため

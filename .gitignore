@@ -1,1 +1,3 @@
 .envrc.override
+.ssh/*
+!.ssh/ssh_config.tmpl
