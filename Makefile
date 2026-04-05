@@ -20,6 +20,7 @@ deploy: ## デプロイ
 analyze: ## 分析
 	@scripts/03-analyze.sh
 	@bash -c ' \
+	scripts/04-store-slow-queries.sh host.docker.internal & \
 	scripts/04-store-nginx-access-runs.sh host.docker.internal & \
 	scripts/04-store-results.sh host.docker.internal & \
 	wait;'

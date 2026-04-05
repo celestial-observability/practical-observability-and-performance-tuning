@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 2,
   "links": [],
   "panels": [
     {
@@ -248,6 +248,78 @@
     },
     {
       "datasource": {
+        "uid": "clickhouse-local"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "displayName": "最新ベンチ開始",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "NONE"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 7
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.0-20585723282",
+      "targets": [
+        {
+          "editorType": "sql",
+          "format": 1,
+          "meta": {
+            "builderOptions": {
+              "columns": [],
+              "database": "",
+              "limit": 1000,
+              "mode": "list",
+              "queryType": "table",
+              "table": ""
+            }
+          },
+          "pluginVersion": "4.13.0",
+          "queryType": "table",
+          "rawSql": "with latest_slow_run as (\n  select slow_run_started_at\n  from nginx_access_runs\n  where slow_run_started_at between $__fromTime and $__toTime\n  order by slow_run_started_at desc\n  limit 1\n)\nselect\n  'Nginx',\n  formatDateTime(toTimeZone(slow_run_started_at, 'Asia/Tokyo'),'%H:%i:%S') as \"最新ベンチ開始\"\nfrom latest_slow_run\nwhere slow_run_started_at between $__fromTime and $__toTime\norder by slow_run_started_at desc\nlimit 1\n;",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "clickhouse-local"
       },
@@ -469,14 +541,27 @@
               "table": ""
             }
           },
-          "pluginVersion": "4.13.0",
+          "pluginVersion": "4.14.0",
           "queryType": "table",
-          "rawSql": "with latest_slow_run as (\n  select slow_run_started_at\n  from nginx_access_runs\n  where slow_run_started_at between $__fromTime and $__toTime\n  order by slow_run_started_at desc\n  limit 1\n)\nselect\n  uri\n  , method\n  , count as \"合計\"\n  , c_2xx as \"2xx\"\n  , c_3xx as \"3xx\"\n  , c_4xx as \"4xx\"\n  , c_5xx as \"5xx\"\n  , sum as \"合計時間\"\n  , min as \"最短時間\"\n  , max as \"最長時間\"\n  , avg as \"平均時間\"\n  , p90 as \"p90時間\"\nfrom nginx_access_runs\nwhere slow_run_started_at = (select slow_run_started_at from latest_slow_run)\norder by sum desc\n;",
+          "rawSql": "with latest_slow_run as (\n  select log_started_at\n  from slow_runs\n  where log_started_at between $__fromTime and $__toTime\n  order by log_started_at desc\n  limit 1\n)\nselect\n  uri\n  , method\n  , count as \"合計\"\n  , c_2xx as \"2xx\"\n  , c_3xx as \"3xx\"\n  , c_4xx as \"4xx\"\n  , c_5xx as \"5xx\"\n  , sum as \"合計時間\"\n  , min as \"最短時間\"\n  , max as \"最長時間\"\n  , avg as \"平均時間\"\n  , p90 as \"p90時間\"\nfrom nginx_access_runs\nwhere slow_run_started_at = (select log_started_at from latest_slow_run)\norder by sum desc\n;",
           "refId": "A"
         }
       ],
       "title": "時間範囲内の最新ベンチのNginxのアクセスログ集計",
       "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 14,
+      "panels": [],
+      "title": "DB(スロークエリ単位)",
+      "type": "row"
     },
     {
       "datasource": {
@@ -503,12 +588,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 13,
         "w": 4,
         "x": 0,
-        "y": 10
+        "y": 15
       },
-      "id": 13,
+      "id": 16,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -516,7 +601,9 @@
         "orientation": "horizontal",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "/.*/",
           "values": false
         },
@@ -539,14 +626,130 @@
               "table": ""
             }
           },
-          "pluginVersion": "4.13.0",
+          "pluginVersion": "4.14.0",
           "queryType": "table",
-          "rawSql": "with latest_slow_run as (\n  select slow_run_started_at\n  from nginx_access_runs\n  where slow_run_started_at between $__fromTime and $__toTime\n  order by slow_run_started_at desc\n  limit 1\n)\nselect\n  'Nginx',\n  formatDateTime(toTimeZone(slow_run_started_at, 'Asia/Tokyo'),'%H:%i:%S') as \"最新ベンチ開始\"\nfrom latest_slow_run\nwhere slow_run_started_at between $__fromTime and $__toTime\norder by slow_run_started_at desc\nlimit 1\n;",
+          "rawSql": "select\n  'MySQL',\n  formatDateTime(toTimeZone(log_started_at, 'Asia/Tokyo'),'%H:%i:%S') as \"最新ベンチ開始\"\nfrom slow_runs\nwhere log_started_at between $__fromTime and $__toTime\norder by log_started_at desc\nlimit 1",
           "refId": "A"
         }
       ],
       "title": "",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-local"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-purples"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false,
+            "width": 100
+          },
+          "fieldMinMax": true,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/時間$/"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "クエリ"
+            },
+            "properties": [
+              {
+                "id": "custom.width"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*行数$/"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 20,
+        "x": 4,
+        "y": 15
+      },
+      "id": 15,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.0-20585723282",
+      "targets": [
+        {
+          "editorType": "sql",
+          "format": 1,
+          "meta": {
+            "builderOptions": {
+              "columns": [],
+              "database": "",
+              "limit": 1000,
+              "mode": "list",
+              "queryType": "table",
+              "table": ""
+            }
+          },
+          "pluginVersion": "4.14.0",
+          "queryType": "table",
+          "rawSql": "with latest_slow_run as (\n  select log_started_at\n  from slow_runs\n  where log_started_at between $__fromTime and $__toTime\n  order by log_started_at desc\n  limit 1\n)\nselect\n  example_query as \"クエリ\"\n  , query_count as \"クエリ数\"\n  , qtime_sum as \"合計時間\"\n  , qtime_avg as \"平均時間\"\n  , qtime_pct95 as \"p95時間\"\n  , rows_exam_sum as \"合計走査行数\"\n  , rows_exam_avg as \"平均走査行数\"\n  , rows_exam_pct95 as \"p95走査行数\"\nfrom slow_queries\nwhere\n  log_started_at = (select log_started_at from latest_slow_run)\norder by qtime_sum desc\n;",
+          "refId": "A"
+        }
+      ],
+      "title": "時間範囲内で最新ベンチのスロークエリ",
+      "type": "table"
     }
   ],
   "preload": false,
