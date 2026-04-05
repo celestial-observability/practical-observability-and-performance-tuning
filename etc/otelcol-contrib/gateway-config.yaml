@@ -16,6 +16,10 @@ extensions:
 # 「type名/好きな名前」で指定する
 # 指定できるtype名は決まっている(otlp, prometheus, filelog, fluentforward, etc...)
 receivers:
+  otlp/my-receiver:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
   hostmetrics/ec2:
     collection_interval: 10s
     scrapers:
@@ -33,6 +37,9 @@ processors:
   resourcedetection/ec2:
     detectors: [ system, ec2 ]
     timeout: 2s
+  batch:
+    timeout: 5s # 5秒ごとに強制送信
+    send_batch_size: 8192 # 8192件たまったら送信
   memory_limiter:
     check_interval: 2s
     limit_mib: 512 # 512MiBを超えたら制限開始
@@ -73,6 +80,10 @@ exporters:
 service:
   extensions: [file_storage, health_check]
   pipelines:
+    traces:
+      receivers: [otlp/my-receiver]
+      processors: [memory_limiter, batch]
+      exporters: [clickhouse/my-clickhouse]
     metrics/self:
       receivers: [hostmetrics/ec2]
       processors: [resourcedetection/ec2, memory_limiter]
