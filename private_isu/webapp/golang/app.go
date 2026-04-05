@@ -76,6 +76,48 @@ type Comment struct {
 	User      User
 }
 
+// postsとusersの結合結果用の構造体
+type PostUser struct {
+	PostID        int       `db:"post_id"`
+	PostUserID    int       `db:"post_user_id"`
+	PostImgdata   []byte    `db:"post_imgdata"`
+	PostBody      string    `db:"post_body"`
+	PostMime      string    `db:"post_mime"`
+	PostCreatedAt time.Time `db:"post_created_at"`
+
+	UserID          int       `db:"user_id"`
+	UserAccountName string    `db:"user_account_name"`
+	UserPasshash    string    `db:"user_passhash"`
+	UserAuthority   int       `db:"user_authority"`
+	UserDelFlg      int       `db:"user_del_flg"`
+	UserCreatedAt   time.Time `db:"user_created_at"`
+}
+
+// 各PostUserからUserを含むPostを組み立てる
+func buildPosts(postUsers []PostUser) []Post {
+	posts := make([]Post, len(postUsers))
+	for i, pu := range postUsers {
+		posts[i] = Post{
+			ID:        pu.PostID,
+			UserID:    pu.UserID,
+			Imgdata:   pu.PostImgdata,
+			Body:      pu.PostBody,
+			Mime:      pu.PostMime,
+			CreatedAt: pu.PostCreatedAt,
+
+			User: User{
+				ID:          pu.UserID,
+				AccountName: pu.UserAccountName,
+				Passhash:    pu.UserPasshash,
+				Authority:   pu.UserAuthority,
+				DelFlg:      pu.UserDelFlg,
+				CreatedAt:   pu.UserCreatedAt,
+			},
+		}
+	}
+	return posts
+}
+
 func init() {
 	memdAddr := os.Getenv("ISUCONP_MEMCACHED_ADDRESS")
 	if memdAddr == "" {
@@ -306,11 +348,6 @@ func makePostsNew(ctx context.Context, results []Post, csrfToken string, allComm
 
 		p.Comments = comments
 
-		err = db.GetContext(ctx, &p.User, "SELECT * FROM `users` WHERE `id` = ?", p.UserID)
-		if err != nil {
-			return nil, err
-		}
-
 		p.CSRFToken = csrfToken
 
 		posts = append(posts, p)
@@ -489,25 +526,34 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	me := getSessionUser(ctx, r)
 
 	results := []Post{}
+	postUsers := []PostUser{}
 
 	query := `
 SELECT
-  posts.id as id
-  , posts.user_id as user_id
-  , posts.body as body
-  , posts.mime as mime
-  , posts.created_at as created_at
+  posts.id as post_id
+  , posts.user_id as post_user_id
+  , posts.body as post_body
+  , posts.mime as post_mime
+  , posts.created_at as post_created_at
+
+  , users.id as user_id
+  , users.account_name as user_account_name
+  , users.passhash as user_passhash
+  , users.authority as user_authority
+  , users.del_flg as user_del_flg
+  , users.created_at as user_created_at
 FROM posts
 JOIN users ON posts.user_id = users.id
 WHERE users.del_flg = 0
 ORDER BY posts.created_at DESC
 LIMIT 20
 `
-	err := db.SelectContext(ctx, &results, query)
+	err := db.SelectContext(ctx, &postUsers, query)
 	if err != nil {
 		log.Print(err)
 		return
 	}
+	results = buildPosts(postUsers)
 
 	posts, err := makePostsNew(ctx, results, getCSRFToken(r), false)
 	if err != nil {
