@@ -31,3 +31,4 @@ CREATE TABLE `users` (
 ALTER TABLE comments ADD INDEX post_id_and_created_at_idx (post_id, created_at desc);
 ALTER TABLE comments ADD INDEX user_id_idx (user_id);
 ALTER TABLE posts ADD INDEX created_at_idx (created_at desc);
+ALTER TABLE posts ADD INDEX user_id_and_created_at_idx (user_id, created_at desc);

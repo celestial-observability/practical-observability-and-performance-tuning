@@ -549,7 +549,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	postUsers := []PostUser{}
 
 	query := `
-SELECT
+SELECT /*+ NO_INDEX(posts user_id_and_created_at_idx) */
   posts.id as post_id
   , posts.user_id as post_user_id
   , posts.body as post_body
@@ -706,7 +706,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	postUsers := []PostUser{}
 
 	query := `
-SELECT
+SELECT /*+ NO_INDEX(posts user_id_and_created_at_idx) */
   posts.id as post_id
   , posts.user_id as post_user_id
   , posts.body as post_body
@@ -761,7 +761,7 @@ func getPostsID(w http.ResponseWriter, r *http.Request) {
 	postUsers := []PostUser{}
 
 	query := `
-SELECT
+SELECT /*+ NO_INDEX(posts user_id_and_created_at_idx) */
   posts.id as post_id
   , posts.user_id as post_user_id
   , posts.body as post_body
