@@ -2,3 +2,16 @@
 # awsコマンド用
 #
 export AWS_PROFILE=〇〇
+
+#
+# GITHUB_USERNAME
+#
+# sshするための公開鍵を取得するのに、 https://github.com/<GITHUB_USERNAME>.keys をcurlする際に使います
+export GITHUB_USERNAME=〇〇
+
+#
+# SSH_PRIVATE_KEY_PATH
+#
+# sshするための秘密鍵のパス
+# 上書きする場合は、コメントイン
+# export SSH_PRIVATE_KEY_PATH=$HOME/.ssh/〇〇
