@@ -30,7 +30,7 @@ deploy_otelcol() {
   ssh -F "$SSH_CONFIG_FILE" "$TARGET_HOST" '
   set -euo pipefail
   sudo install -d -o isucon -g isucon -m 777 /var/lib/otelcol-contrib/queue
-  sudo systemctl restart otelcol-contrib
+  sudo systemctl stop otelcol-contrib
   '
 }
 

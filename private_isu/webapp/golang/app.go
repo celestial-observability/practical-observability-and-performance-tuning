@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/XSAM/otelsql"
+	//"github.com/XSAM/otelsql"
 	"github.com/bradfitz/gomemcache/memcache"
 	gsm "github.com/bradleypeabody/gorilla-sessions-memcache"
 	"github.com/go-chi/chi/v5"
@@ -26,7 +26,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/grafana/pyroscope-go"
 	"github.com/jmoiron/sqlx"
-	"github.com/riandyrn/otelchi"
+	//"github.com/riandyrn/otelchi"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
@@ -943,9 +943,9 @@ func postAdminBanned(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	setupPyroscope()
-	shutdown := initTracer()
-	defer shutdown()
+	//setupPyroscope()
+	//shutdown := initTracer()
+	//defer shutdown()
 
 	host := os.Getenv("ISUCONP_DB_HOST")
 	if host == "" {
@@ -978,16 +978,17 @@ func main() {
 		dbname,
 	)
 
-	rawdb, err := otelsql.Open("mysql", dsn,
-		otelsql.WithAttributes(semconv.DBSystemNameMySQL),
-		otelsql.WithSpanOptions(otelsql.SpanOptions{
-			DisableErrSkip: true, // MySQLだと余計なエラーがrootに出やすいのでSkip(sql.conn.queryが正常なのにエラーとして認識される)
-		}),
-	)
-	if err != nil {
-		log.Fatalf("Failed to connect to DB: %s.", err.Error())
-	}
-	db = sqlx.NewDb(rawdb, "mysql")
+	//rawdb, err := otelsql.Open("mysql", dsn,
+	//	otelsql.WithAttributes(semconv.DBSystemNameMySQL),
+	//	otelsql.WithSpanOptions(otelsql.SpanOptions{
+	//		DisableErrSkip: true, // MySQLだと余計なエラーがrootに出やすいのでSkip(sql.conn.queryが正常なのにエラーとして認識される)
+	//	}),
+	//)
+	//if err != nil {
+	//	log.Fatalf("Failed to connect to DB: %s.", err.Error())
+	//}
+	//db = sqlx.NewDb(rawdb, "mysql")
+	db, err = sqlx.Open("mysql", dsn)
 	defer db.Close()
 
 	root, err := os.OpenRoot("../public")
@@ -998,7 +999,7 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Use(otelchi.Middleware("isu-go", otelchi.WithChiRoutes(r)))
+	//r.Use(otelchi.Middleware("isu-go", otelchi.WithChiRoutes(r)))
 	r.Get("/initialize", getInitialize)
 	r.Get("/login", getLogin)
 	r.Post("/login", postLogin)
