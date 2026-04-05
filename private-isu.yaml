@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: private-isu template
+
+Parameters:
+  GitHubUsername:
+    Description: "GitHub Username for SSH public key"
+    Type: String
+  MyIp:
+    Description: "MyIp for access. curl -fsS https://checkip.amazonaws.com | tr -d '\r\n'"
+    Type: String
+  Ami:
+    Description: "EC2 AMI. ref: https://github.com/catatsuy/private-isu?tab=readme-ov-file#ami"
+    Type: String
+    Default: ami-002d61d6436f85f12
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: '192.168.0.0/16'
+
+  MySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: '192.168.1.0/24'
+      AvailabilityZone: ap-northeast-1a
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MySubnet
+      RouteTableId: !Ref MyRouteTable
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH, HTTP, HTTPS access
+      VpcId: !Ref VPC
+
+  IngressInternal:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref MySecurityGroup
+      IpProtocol: -1
+      CidrIp: 192.168.0.0/16
+      Description: "purpose=internal,stack=private-isu"
+
+  IngressMyIp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref MySecurityGroup
+      IpProtocol: -1
+      CidrIp: !Sub "${MyIp}/32"
+      Description: "purpose=admin,myip=true,stack=private-isu"
+
+  ServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: Name
+          Value: web
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 40
+            VolumeType: gp3
+            DeleteOnTermination: true
+      InstanceType: c7a.large
+      ImageId: !Ref Ami
+      SubnetId: !Ref MySubnet
+      PrivateIpAddress: '192.168.1.10'
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          GITHUB_USERNAME=${GitHubUsername}
+          mkdir -p /home/isucon/.ssh
+          curl -s https://github.com/$GITHUB_USERNAME.keys >> /home/isucon/.ssh/authorized_keys
+          chown -R isucon:isucon /home/isucon/.ssh
+          chmod 600 /home/isucon/.ssh/authorized_keys
+
+  BenchmarkerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: Name
+          Value: bench
+      InstanceType: c7a.xlarge
+      ImageId: !Ref Ami
+      SubnetId: !Ref MySubnet
+      PrivateIpAddress: '192.168.1.20'
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          GITHUB_USER=${GitHubUsername}
+          mkdir -p /home/isucon/.ssh
+          curl -s https://github.com/$GITHUB_USER.keys >> /home/isucon/.ssh/authorized_keys
+          chown -R isucon:isucon /home/isucon/.ssh
+          chmod 600 /home/isucon/.ssh/authorized_keys
+
+  ServerEIP:
+    Type: AWS::EC2::EIP
+
+  BenchmarkerEIP:
+    Type: AWS::EC2::EIP
+
+  ServerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref ServerInstance
+      EIP: !Ref ServerEIP
+
+  BenchmarkerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref BenchmarkerInstance
+      EIP: !Ref BenchmarkerEIP
+
+#
+# Outputs はアカウントのリージョン内でユニーク
+#
+Outputs:
+  IsuPerfMySubnetId:
+    Description: "SubnetId for perf EC2 instance"
+    Value: !Ref MySubnet
+    Export:
+      Name: IsuPerfMySubnetId
+  IsuPerfMySecurityGroupId:
+    Description: "SecurityGroupId for perf EC2 instance"
+    Value: !Ref MySecurityGroup
+    Export:
+      Name: IsuPerfMySecurityGroupId
+  IsuPerfGitHubUsername:
+    Description: "GitHub Username for cross-stack reference"
+    Value: !Ref GitHubUsername
+    Export:
+      Name: IsuPerfGitHubUsername
+  IsuWebPublicIP:
+    Description: "Public IP for accessing web service"
+    Value: !Ref ServerEIP
+    Export:
+      Name: IsuWebPublicIP
+  IsuBenchPublicIP:
+    Description: "Public IP for accessing bench"
+    Value: !Ref BenchmarkerEIP
+    Export:
+      Name: IsuBenchPublicIP
