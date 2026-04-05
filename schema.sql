@@ -29,3 +29,4 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1020 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 ALTER TABLE comments ADD INDEX post_id_and_created_at_idx (post_id, created_at desc);
+ALTER TABLE posts ADD INDEX created_at_idx (created_at desc);
