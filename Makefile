@@ -8,6 +8,7 @@ include makefiles/ssh.mk
 .PHONY: deploy
 deploy: ## デプロイ
 	@scripts/01-deploy-app.sh web
+	@scripts/01-deploy-nginx.sh web
 
 .PHONY: bench
 bench: ## ベンチマークの実行
