@@ -1,0 +1,79 @@
+#
+# Extension
+#
+# health_check: ヘルスチェック用のエンドポイントを生やす
+#
+extensions:
+  file_storage:
+    directory: /var/lib/otelcol-contrib/queue  # 永続ボリューム
+  health_check:
+    endpoint: 0.0.0.0:13133
+#
+# Receiver
+#
+# ソフトウェア(例: Nginx) →  otel-collector(これ)等の設定群
+# で利用するプロトコル
+# 「type名/好きな名前」で指定する
+# 指定できるtype名は決まっている(otlp, prometheus, filelog, fluentforward, etc...)
+receivers:
+  hostmetrics/ec2:
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      load:
+      memory:
+      disk:
+      filesystem:
+      network:
+
+#
+# Processor
+#
+processors:
+  resourcedetection/ec2:
+    detectors: [ system, ec2 ]
+    timeout: 2s
+  memory_limiter:
+    check_interval: 2s
+    limit_mib: 512 # 512MiBを超えたら制限開始
+    spike_limit_mib: 128 # 短時間のメモリ増加を許容する(512MiB + 128MiB = 640MiBまで許容)
+
+#
+# Exporter
+#
+# otel-collector → 〇〇(例: ClickHouse) の設定群
+# 「type名/好きな名前」で指定する
+# 指定できるtype名は決まっている(otlp, debug, loki, file, datadog, clickhouse, etc...)
+exporters:
+  # ClickHouse プラグイン(otelcol-contribに含まれている(otelcolコアには含まれない))
+  # ClickHouse公式のOTel統合ページ
+  # https://clickhouse.com/docs/observability/integrating-opentelemetry
+  # 各種属性
+  # https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/clickhouseexporter/README.md#configuration-options
+  # パイプラインで指定をすると、それぞれ以下のテーブルを作ってくれる
+  #
+  # パイプラインでtraceがあると3つ作成(作らないことも可能)
+  # 1. otel_traces
+  # 2. otel_traces_trace_id_ts
+  # 3. otel_traces_trace_id_ts_mv
+  #
+  # パイプラインでmetricsがあると5つ作成(作らないことも可能)
+  # 1. otel_metrics_gauge         # 現在値(瞬間値)系のメトリクス(CPU使用率、メモリ使用量、現在の接続数)
+  # 2. otel_metrics_sum           # 累積値やカウンターを表すメトリクス(リクエスト回数, 転送バイト数)
+  # 3. otel_metrics_summary       # 分位数(quantile)を含む要約統計 (レイテンシー p50, p90, p99)
+  # 4. otel_metrics_histogram     # 通常のヒストグラム(固定ビン)データ(リクエスト時間の分布)
+  # 5. otel_metrics_exp_histogram #
+  clickhouse/my-clickhouse:
+    endpoint: "tcp://localhost:9000?dial_timeout=10s&compress=lz4&async_insert=1&username=admin&password=admin"
+    database: default
+    sending_queue:
+      # queue_size (default = 1000): データを破棄する前にメモリ内に保持されるバッチの最大数。
+      queue_size: 1
+
+service:
+  extensions: [file_storage, health_check]
+  pipelines:
+    metrics/self:
+      receivers: [hostmetrics/ec2]
+      processors: [resourcedetection/ec2, memory_limiter]
+      exporters: [clickhouse/my-clickhouse]
