@@ -1,0 +1,9 @@
+---
+
+services:
+  # clickhouse は公式
+  # https://hub.docker.com/_/clickhouse
+  # クライアント用に利用
+  ch:
+    image: clickhouse:25.12.1
+    entrypoint: ''

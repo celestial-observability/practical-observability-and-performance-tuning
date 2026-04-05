@@ -16,6 +16,10 @@ deploy: ## デプロイ
 	@scripts/01-deploy-nginx.sh web
 	@scripts/01-deploy-mysql.sh web
 
+.PHONY: analyze
+analyze: ## 分析
+	@scripts/04-store-results.sh host.docker.internal
+
 .PHONY: bench
 bench: ## ベンチマークの実行
 	@scripts/02-bench.sh
