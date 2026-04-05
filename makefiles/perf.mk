@@ -7,6 +7,7 @@ perf.deploy: perf.define-variables ## パフォーマンス計測環境をデプ
 		echo "パフォーマンス計測環境はローカルにデプロイされています"; \
 	elif [[ '$(PERF_STACK_ID)' != '' ]]; then \
 		scripts/05-deploy-perf-gateway.sh perf; \
+		scripts/05-deploy-perf-agent.sh web; \
 	else \
 		scripts/05-deploy-perf-gateway.sh web; \
 	fi

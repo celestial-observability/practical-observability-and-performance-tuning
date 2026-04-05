@@ -84,6 +84,10 @@ service:
       receivers: [otlp/my-receiver]
       processors: [memory_limiter, batch]
       exporters: [clickhouse/my-clickhouse]
+    metrics:
+      receivers: [otlp/my-receiver]
+      processors: [memory_limiter, batch]
+      exporters: [clickhouse/my-clickhouse]
     metrics/self:
       receivers: [hostmetrics/ec2]
       processors: [resourcedetection/ec2, memory_limiter]

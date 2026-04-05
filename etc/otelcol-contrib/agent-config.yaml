@@ -1,0 +1,86 @@
+#
+# Extension
+#
+# health_check: ヘルスチェック用のエンドポイントを生やす
+#
+extensions:
+  file_storage:
+    directory: /var/lib/otelcol-contrib/queue  # 永続ボリューム
+  health_check:
+    endpoint: 0.0.0.0:13133
+#
+# Receiver
+#
+# ソフトウェア(例: Nginx) →  otel-collector(これ)等の設定群
+# で利用するプロトコル
+# 「type名/好きな名前」で指定する
+# 指定できるtype名は決まっている(otlp, prometheus, filelog, fluentforward, etc...)
+receivers:
+  otlp/my-receiver:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  hostmetrics/ec2:
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      load:
+      memory:
+      disk:
+      filesystem:
+      network:
+
+#
+# Processor
+#
+# batch: バッチ(ある程度まとめて送る)
+processors:
+  resourcedetection/ec2:
+    detectors: [ system, ec2 ]
+    timeout: 2s
+  batch:
+    timeout: 5s # 5秒ごとに強制送信
+    send_batch_size: 8192 # 8192件たまったら送信
+    send_batch_max_size: 16384 # 溜め込む上限(必ず8192件で送信する保証はないため、上限を決めておく)
+  memory_limiter:
+    check_interval: 2s
+    limit_mib: 512 # 512MiBを超えたら制限開始
+    spike_limit_mib: 128 # 短時間のメモリ増加を許容する(512MiB + 128MiB = 640MiBまで許容)
+
+#
+# Exporter
+#
+# otel-collector → 〇〇(例: ClickHouse) の設定群
+# 「type名/好きな名前」で指定する
+# 指定できるtype名は決まっている(otlp, debug, loki, file, datadog, clickhouse, etc...)
+exporters:
+  debug:
+    verbosity: basic
+  otlphttp/to-gateway:
+    endpoint: http://192.168.1.30:4318
+    tls:
+      insecure: true  # HTTPSでないなら必須
+    retry_on_failure:
+      enabled: true           # リトライ機能のON/OFF
+      initial_interval: 1s    # 1回目の失敗後、1秒後にリトライ
+      max_interval: 30s       # リトライ間隔の上限。30秒以上は待たない
+      max_elapsed_time: 300s  # 5分リトライして失敗したら諦める(キューに戻す or 破棄)
+    sending_queue:
+      enabled: true     # キューのON/OFF
+      num_consumers: 10 # 並行送信ワーカー数(並行数)
+      queue_size: 5000  # キューに保持できるバッチ数
+      storage: file_storage  # 永続化
+
+service:
+  extensions: [file_storage, health_check]
+  pipelines:
+    traces:
+      receivers: [otlp/my-receiver]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/to-gateway]
+    metrics:
+      receivers: [hostmetrics/ec2]
+      processors: [resourcedetection/ec2, memory_limiter, batch]
+      exporters: [otlphttp/to-gateway]
