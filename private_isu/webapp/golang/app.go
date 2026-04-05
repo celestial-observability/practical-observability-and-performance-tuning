@@ -586,21 +586,11 @@ LIMIT 20
 		return
 	}
 
-	fmap := template.FuncMap{
-		"imageURL": imageURL,
-	}
-
-	template.Must(template.New("layout.html").Funcs(fmap).ParseFiles(
-		getTemplPath("layout.html"),
-		getTemplPath("index.html"),
-		getTemplPath("posts.html"),
-		getTemplPath("post.html"),
-	)).Execute(w, struct {
-		Posts     []Post
-		Me        User
-		CSRFToken string
-		Flash     string
-	}{posts, me, getCSRFToken(r), getFlash(w, r, "notice")})
+	noticeMessage := getFlash(w, r, "notice")
+	csrfToken := getCSRFToken(r)
+	layoutHtml(w, me, func(w2 io.Writer) {
+		indexHtml(w2, posts, csrfToken, noticeMessage)
+	})
 }
 
 func getAccountName(w http.ResponseWriter, r *http.Request) {
@@ -1148,4 +1138,141 @@ func setupPyroscope() {
 	} else {
 		log.Printf("[pyroscope] 初期化成功: %s に継続的プロファイリングをします", serverAddr)
 	}
+}
+
+var layoutHtmlByteArray = [...][]byte{
+	[]byte(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Iscogram</title><link href="/css/style.css" media="screen" rel="stylesheet" type="text/css"></head><body><div class="container"><div class="header"><div class="isu-title"><h1><a href="/">Iscogram</a></h1></div><div class="isu-header-menu">`),
+	[]byte(`<div><a href="/login">ログイン</a></div>`),
+	[]byte(`<div><a href="/@`),
+	[]byte(`"><span class="isu-account-name">`),
+	[]byte(`</span>さん</a></div>`),
+	[]byte(`<div><a href="/admin/banned">管理者用ページ</a></div><div><a href="/logout">ログアウト</a></div>`),
+	[]byte(`<div><a href="/logout">ログアウト</a></div>`),
+	[]byte(`</div></div>`),
+	[]byte(`</div><script src="/js/timeago.min.js"></script><script src="/js/main.js"></script></body></html>`),
+}
+
+func layoutHtml(w io.Writer, me User, contentBuilder func(b io.Writer)) {
+	w.Write(layoutHtmlByteArray[0])
+	if me.ID == 0 {
+		// 未ログインの場合は、ログインリンク
+		w.Write(layoutHtmlByteArray[1])
+	} else {
+		w.Write(layoutHtmlByteArray[2])
+		w.Write([]byte(me.AccountName))
+		w.Write(layoutHtmlByteArray[3])
+		w.Write([]byte(me.AccountName))
+		w.Write(layoutHtmlByteArray[4])
+		if me.Authority == 1 {
+			// 管理者用ページリンクとログアウトリンク
+			w.Write(layoutHtmlByteArray[5])
+		} else {
+			// ログアウトリンク
+			w.Write(layoutHtmlByteArray[6])
+		}
+	}
+	w.Write(layoutHtmlByteArray[7])
+	contentBuilder(w)
+	w.Write(layoutHtmlByteArray[8])
+}
+
+var indexHtmlByteArray = [...][]byte{
+	[]byte(`<div class="isu-submit"><form method="post" action="/" enctype="multipart/form-data"><div class="isu-form"><input type="file" name="file" value="file"></div><div class="isu-form"><textarea name="body"></textarea></div><div class="form-submit"><input type="hidden" name="csrf_token" value="`),
+	[]byte(`"><input type="submit" name="submit" value="submit"></div>`),
+	[]byte(`<div id="notice-message" class="alert alert-danger">`),
+	[]byte(`</div>`),
+	[]byte(`</form></div>`),
+	[]byte(`<div id="isu-post-more"><button id="isu-post-more-btn">もっと見る</button><img class="isu-loading-icon" src="/img/ajax-loader.gif"></div>`),
+}
+
+func indexHtml(w io.Writer, posts []Post, csrfToken string, flash string) {
+	w.Write(indexHtmlByteArray[0])
+	w.Write([]byte(csrfToken))
+	w.Write(indexHtmlByteArray[1])
+	if flash != "" {
+		w.Write(indexHtmlByteArray[2])
+		w.Write([]byte(flash))
+		w.Write(indexHtmlByteArray[3])
+	}
+	w.Write(indexHtmlByteArray[4])
+	postsHtml(w, posts)
+	w.Write(indexHtmlByteArray[5])
+}
+
+var postsHtmlByteArray = [...][]byte{
+	[]byte(`<div class="isu-post-list">`),
+	[]byte(`</div>`),
+}
+
+func postsHtml(w io.Writer, posts []Post) {
+	w.Write(postsHtmlByteArray[0])
+	for _, p := range posts {
+		postHtml(w, p)
+	}
+	w.Write(postsHtmlByteArray[1])
+}
+
+var postHtmlByteArray = [...][]byte{
+	[]byte(`<div class="isu-post" id="pid_`),
+	[]byte(`" data-created-at="`),
+	[]byte(`"><div class="isu-post-header"><a href="/@`),
+	[]byte(`" class="isu-post-account-name">`),
+	[]byte(`</a><a href="/posts/`),
+	[]byte(`" class="isu-post-permalink">`),
+	[]byte(` "></time></a></div><div class="isu-post-image"><img src="`),
+	[]byte(`" class="isu-image"></div><div class="isu-post-text"><a href="/@`),
+	[]byte(`" class="isu-post-account-name">`),
+	[]byte(`</a>`),
+	[]byte(`</div><div class="isu-post-comment"><div class="isu-post-comment-count">comments: <b>`),
+	[]byte(`</b></div>`),
+	[]byte(`<div class="isu-comment"><a href="/@`),
+	[]byte(`" class="isu-comment-account-name">`),
+	[]byte(`</a><span class="isu-comment-text">`),
+	[]byte(`</span></div>`),
+	[]byte(`<div class="isu-comment-form"><form method="post" action="/comment"><input type="text" name="comment"><input type="hidden" name="post_id" value="`),
+	[]byte(`"><input type="hidden" name="csrf_token" value="`),
+	[]byte(`"><input type="submit" name="submit" value="submit"></form></div></div></div>`),
+}
+
+func postHtml(w io.Writer, p Post) {
+	createdAt := []byte(p.CreatedAt.Format(time.RFC3339))
+	accountName := []byte(p.User.AccountName)
+
+	w.Write(postHtmlByteArray[0])
+	w.Write([]byte(strconv.Itoa(p.ID)))
+	w.Write(postHtmlByteArray[1])
+	w.Write(createdAt)
+	w.Write(postHtmlByteArray[2])
+	w.Write(accountName)
+	w.Write(postHtmlByteArray[3])
+	w.Write(accountName)
+	w.Write(postHtmlByteArray[4])
+	w.Write([]byte(strconv.Itoa(p.ID)))
+	w.Write(postHtmlByteArray[5])
+	w.Write(createdAt)
+	w.Write(postHtmlByteArray[6])
+	w.Write([]byte(imageURL(p)))
+	w.Write(postHtmlByteArray[7])
+	w.Write(accountName)
+	w.Write(postHtmlByteArray[8])
+	w.Write(accountName)
+	w.Write(postHtmlByteArray[9])
+	w.Write([]byte(p.Body))
+	w.Write(postHtmlByteArray[10])
+	w.Write([]byte(strconv.Itoa(p.CommentCount)))
+	w.Write(postHtmlByteArray[11])
+	for _, c := range p.Comments {
+		w.Write(postHtmlByteArray[12])
+		w.Write([]byte(strconv.Itoa(c.ID)))
+		w.Write(postHtmlByteArray[13])
+		w.Write([]byte(c.User.AccountName))
+		w.Write(postHtmlByteArray[14])
+		w.Write([]byte(c.Comment))
+		w.Write(postHtmlByteArray[15])
+	}
+	w.Write(postHtmlByteArray[16])
+	w.Write([]byte(strconv.Itoa(p.ID)))
+	w.Write(postHtmlByteArray[17])
+	w.Write([]byte(p.CSRFToken))
+	w.Write(postHtmlByteArray[18])
 }
