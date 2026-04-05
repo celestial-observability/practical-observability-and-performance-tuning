@@ -821,18 +821,9 @@ WHERE posts.id = ?
 
 	me := getSessionUser(ctx, r)
 
-	fmap := template.FuncMap{
-		"imageURL": imageURL,
-	}
-
-	template.Must(template.New("layout.html").Funcs(fmap).ParseFiles(
-		getTemplPath("layout.html"),
-		getTemplPath("post_id.html"),
-		getTemplPath("post.html"),
-	)).Execute(w, struct {
-		Post Post
-		Me   User
-	}{p, me})
+	layoutHtml(w, me, func(w2 io.Writer) {
+		postHtml(w2, p)
+	})
 }
 
 func postIndex(w http.ResponseWriter, r *http.Request) {
