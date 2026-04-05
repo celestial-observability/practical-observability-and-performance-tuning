@@ -1,5 +1,6 @@
 include makefiles/tool.mk
 include makefiles/aws.mk
+include makefiles/ssh.mk
 
 ################################################################################
 # Utility-Command help
