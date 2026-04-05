@@ -13,6 +13,7 @@ setup: ## ツール群をインストール
 deploy: ## デプロイ
 	@scripts/01-deploy-app.sh web
 	@scripts/01-deploy-nginx.sh web
+	@scripts/01-deploy-mysql.sh web
 
 .PHONY: bench
 bench: ## ベンチマークの実行
