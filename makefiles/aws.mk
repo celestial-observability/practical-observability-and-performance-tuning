@@ -19,6 +19,26 @@ aws.create-cfn: validate-ssh-private-key ## AWSのCFnスタックを作成
 	@time aws cloudformation wait stack-create-complete --stack-name $(STACK_NAME)
 
 ################################################################################
+# 停止
+################################################################################
+.PHONY: aws.down
+aws.down: ## AWSのインスタンスを停止
+	@make aws.down-web
+	@make aws.down-bench
+
+.PHONY: aws.down-web
+aws.down-web: ## webインスタンスを停止
+	$(eval STACK_ID := $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) --query 'Stacks[0].StackId' --output text))
+	$(eval WEB_INSTANCE_ID := $(shell aws ec2 describe-instances --filters "Name=tag:aws:cloudformation:stack-id,Values=$(STACK_ID)" 'Name=tag:Name,Values=web' --query 'Reservations[].Instances[].InstanceId' --output text))
+	@aws ec2 stop-instances --instance-ids $(WEB_INSTANCE_ID)
+
+.PHONY: aws.down-bench
+aws.down-bench: ## benchインスタンスを停止
+	$(eval STACK_ID := $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) --query 'Stacks[0].StackId' --output text))
+	$(eval BENCH_INSTANCE_ID := $(shell aws ec2 describe-instances --filters "Name=tag:aws:cloudformation:stack-id,Values=$(STACK_ID)" 'Name=tag:Name,Values=bench' --query 'Reservations[].Instances[].InstanceId' --output text))
+	@aws ec2 stop-instances --instance-ids $(BENCH_INSTANCE_ID)
+
+################################################################################
 # SSHの設定
 ################################################################################
 .PHONY: aws.setup-ssh-config
