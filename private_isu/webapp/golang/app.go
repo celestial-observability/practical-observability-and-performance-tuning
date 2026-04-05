@@ -355,12 +355,8 @@ ORDER BY comments.created_at DESC
 	}
 
 	for _, p := range results {
-		err := db.GetContext(ctx, &p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
-		if err != nil {
-			return nil, err
-		}
-
 		comments := commentsMap[p.ID]
+		p.CommentCount = len(comments)
 
 		if !allComments {
 			limit := len(comments)
