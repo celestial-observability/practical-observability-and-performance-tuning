@@ -7,7 +7,7 @@ aws.status: ## AWSのインスタンス状態とCFnスタック一覧
 	@aws ec2 describe-instances --filters 'Name=tag:Name,Values=web,bench' --query 'Reservations[].Instances[].{Name:Tags[?Key==`Name`]|[0].Value,State:State.Name,PublicIp:PublicIpAddress,InstanceId:InstanceId}' --output table
 
 ################################################################################
-# CFnスタック作成
+# CFnスタック作成と削除
 ################################################################################
 .PHONY: aws.create-cfn
 aws.create-cfn: validate-ssh-private-key ## AWSのCFnスタックを作成
@@ -17,6 +17,16 @@ aws.create-cfn: validate-ssh-private-key ## AWSのCFnスタックを作成
 		ParameterKey=MyIp,ParameterValue=$(MY_IP)
 	@echo "$(STACK_NAME): 作成中です(約1分かかります)"
 	@time aws cloudformation wait stack-create-complete --stack-name $(STACK_NAME)
+
+.PHONY: aws.delete-cfn
+aws.delete-cfn: ## AWSのCFnスタックを削除(約1.5分)
+	@echo 'Before status'
+	@make aws.status
+	@aws cloudformation delete-stack --stack-name $(STACK_NAME)
+	@echo '削除中です(約1.5~2分かかります)'
+	@time aws cloudformation wait stack-delete-complete --stack-name $(STACK_NAME)
+	@echo 'After status'
+	@make aws.status
 
 ################################################################################
 # 停止
