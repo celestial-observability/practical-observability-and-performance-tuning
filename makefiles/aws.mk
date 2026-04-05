@@ -39,6 +39,28 @@ aws.down-bench: ## benchインスタンスを停止
 	@aws ec2 stop-instances --instance-ids $(BENCH_INSTANCE_ID)
 
 ################################################################################
+# 起動
+################################################################################
+.PHONY: aws.up
+aws.up: ## AWSのインスタンスを起動
+	@make aws.up-web
+	@make aws.up-bench
+
+.PHONY: aws.up-web
+aws.up-web: ## webインスタンスを起動
+	$(eval STACK_ID := $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) --query 'Stacks[0].StackId' --output text))
+	$(eval WEB_INSTANCE_ID := $(shell aws ec2 describe-instances --filters "Name=tag:aws:cloudformation:stack-id,Values=$(STACK_ID)" 'Name=tag:Name,Values=web' --query 'Reservations[].Instances[].InstanceId' --output text))
+	@aws ec2 start-instances --instance-ids $(WEB_INSTANCE_ID)
+	@aws ec2 wait instance-running --instance-ids $(WEB_INSTANCE_ID)
+
+.PHONY: aws.up-bench
+aws.up-bench: ## benchインスタンスを起動
+	$(eval STACK_ID := $(shell aws cloudformation describe-stacks --stack-name $(STACK_NAME) --query 'Stacks[0].StackId' --output text))
+	$(eval BENCH_INSTANCE_ID := $(shell aws ec2 describe-instances --filters "Name=tag:aws:cloudformation:stack-id,Values=$(STACK_ID)" 'Name=tag:Name,Values=bench' --query 'Reservations[].Instances[].InstanceId' --output text))
+	@aws ec2 start-instances --instance-ids $(BENCH_INSTANCE_ID)
+	@aws ec2 wait instance-running --instance-ids $(BENCH_INSTANCE_ID)
+
+################################################################################
 # SSHの設定
 ################################################################################
 .PHONY: aws.setup-ssh-config
