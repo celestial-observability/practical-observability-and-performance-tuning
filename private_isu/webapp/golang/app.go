@@ -201,7 +201,7 @@ func getSessionUser(ctx context.Context, r *http.Request) User {
 
 	u := User{}
 
-	err := db.GetContext(ctx, &u, "SELECT * FROM `users` WHERE `id` = ?", uid)
+	err := db.GetContext(ctx, &u, "SELECT * FROM `users` WERE `id` = ?", uid)
 	if err != nil {
 		return User{}
 	}
