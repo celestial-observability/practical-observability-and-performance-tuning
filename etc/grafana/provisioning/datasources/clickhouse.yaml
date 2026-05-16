@@ -18,5 +18,10 @@ datasources:
       secure: false                # セキュア接続の場合true
       defaultDatabase: ${CLICKHOUSE_DEFAULT_DB} # デフォルトDB
       defaultTable: ${CLICKHOUSE_DEFAULT_TABLE} # デフォルトテーブル
+      traces:
+        otelEnabled: true
+        otelVersion: latest
+        defaultDatabase: ${CLICKHOUSE_DEFAULT_DB}
+        defaultTable: otel_traces
     isDefault: true
     editable: true
