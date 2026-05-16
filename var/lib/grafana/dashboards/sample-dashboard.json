@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -678,7 +678,7 @@
       "type": "table"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -686,81 +686,211 @@
         "y": 20
       },
       "id": 14,
-      "panels": [],
+      "panels": [
+        {
+          "datasource": {
+            "uid": "clickhouse-local"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed"
+              },
+              "displayName": "最新ベンチ開始",
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "NONE"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 4,
+            "x": 0,
+            "y": 22
+          },
+          "id": 16,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "horizontal",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "/.*/",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.0-20585723282",
+          "targets": [
+            {
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": ""
+                }
+              },
+              "pluginVersion": "4.14.0",
+              "queryType": "table",
+              "rawSql": "select\n  'MySQL',\n  formatDateTime(toTimeZone(log_started_at, 'Asia/Tokyo'),'%H:%i:%S') as \"最新ベンチ開始\"\nfrom slow_runs\nwhere log_started_at between $__fromTime and $__toTime\norder by log_started_at desc\nlimit 1",
+              "refId": "A"
+            }
+          ],
+          "title": "",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-local"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-purples"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "color-background"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false,
+                "width": 100
+              },
+              "fieldMinMax": true,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/時間$/"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "クエリ"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "auto"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*行数$/"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 20,
+            "x": 4,
+            "y": 22
+          },
+          "id": 15,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "pluginVersion": "12.4.0-20585723282",
+          "targets": [
+            {
+              "editorType": "sql",
+              "format": 1,
+              "meta": {
+                "builderOptions": {
+                  "columns": [],
+                  "database": "",
+                  "limit": 1000,
+                  "mode": "list",
+                  "queryType": "table",
+                  "table": ""
+                }
+              },
+              "pluginVersion": "4.14.0",
+              "queryType": "table",
+              "rawSql": "with latest_slow_run as (\n  select log_started_at\n  from slow_runs\n  where log_started_at between $__fromTime and $__toTime\n  order by log_started_at desc\n  limit 1\n)\nselect\n  example_query as \"クエリ\"\n  , query_count as \"クエリ数\"\n  , qtime_sum as \"合計時間\"\n  , qtime_avg as \"平均時間\"\n  , qtime_pct95 as \"p95時間\"\n  , rows_exam_sum as \"合計走査行数\"\n  , rows_exam_avg as \"平均走査行数\"\n  , rows_exam_pct95 as \"p95走査行数\"\nfrom slow_queries\nwhere\n  log_started_at = (select log_started_at from latest_slow_run)\norder by qtime_sum desc\n;",
+              "refId": "A"
+            }
+          ],
+          "title": "時間範囲内で最新ベンチのスロークエリ",
+          "type": "table"
+        }
+      ],
       "title": "DB(スロークエリ単位)",
       "type": "row"
     },
     {
-      "datasource": {
-        "uid": "clickhouse-local"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed"
-          },
-          "displayName": "最新ベンチ開始",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "NONE"
-        },
-        "overrides": []
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 13,
-        "w": 4,
+        "h": 1,
+        "w": 24,
         "x": 0,
         "y": 21
       },
-      "id": 16,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/.*/",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.0-20585723282",
-      "targets": [
-        {
-          "editorType": "sql",
-          "format": 1,
-          "meta": {
-            "builderOptions": {
-              "columns": [],
-              "database": "",
-              "limit": 1000,
-              "mode": "list",
-              "queryType": "table",
-              "table": ""
-            }
-          },
-          "pluginVersion": "4.14.0",
-          "queryType": "table",
-          "rawSql": "select\n  'MySQL',\n  formatDateTime(toTimeZone(log_started_at, 'Asia/Tokyo'),'%H:%i:%S') as \"最新ベンチ開始\"\nfrom slow_runs\nwhere log_started_at between $__fromTime and $__toTime\norder by log_started_at desc\nlimit 1",
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
+      "id": 24,
+      "panels": [],
+      "title": "エラーSpans",
+      "type": "row"
     },
     {
       "datasource": {
@@ -770,20 +900,21 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-purples"
+            "mode": "thresholds"
           },
           "custom": {
             "align": "auto",
             "cellOptions": {
-              "type": "color-background"
+              "type": "auto"
             },
             "footer": {
               "reducers": []
             },
-            "inspect": false,
-            "width": 100
+            "hideFrom": {
+              "viz": false
+            },
+            "inspect": false
           },
-          "fieldMinMax": true,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -802,57 +933,94 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/時間$/"
+              "id": "byName",
+              "options": "Timestamp"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "s"
+                "id": "custom.width",
+                "value": 237
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "クエリ"
+              "options": "SpanAttributes"
             },
             "properties": [
               {
-                "id": "custom.width"
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "auto"
-                }
+                "id": "custom.width",
+                "value": 300
               }
             ]
           },
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/.*行数$/"
+              "id": "byName",
+              "options": "Events.Attributes"
             },
             "properties": [
               {
-                "id": "unit",
-                "value": "short"
+                "id": "custom.width",
+                "value": 563
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ResourceAttributes"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 313
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "StatusMessage"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 182
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TraceId"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 293
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 13,
-        "w": 20,
-        "x": 4,
-        "y": 21
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 22
       },
-      "id": 15,
+      "id": 25,
       "options": {
         "cellHeight": "sm",
-        "showHeader": true
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Events.Attributes"
+          }
+        ]
       },
       "pluginVersion": "12.4.0-20585723282",
       "targets": [
@@ -869,13 +1037,13 @@
               "table": ""
             }
           },
-          "pluginVersion": "4.14.0",
+          "pluginVersion": "4.17.0",
           "queryType": "table",
-          "rawSql": "with latest_slow_run as (\n  select log_started_at\n  from slow_runs\n  where log_started_at between $__fromTime and $__toTime\n  order by log_started_at desc\n  limit 1\n)\nselect\n  example_query as \"クエリ\"\n  , query_count as \"クエリ数\"\n  , qtime_sum as \"合計時間\"\n  , qtime_avg as \"平均時間\"\n  , qtime_pct95 as \"p95時間\"\n  , rows_exam_sum as \"合計走査行数\"\n  , rows_exam_avg as \"平均走査行数\"\n  , rows_exam_pct95 as \"p95走査行数\"\nfrom slow_queries\nwhere\n  log_started_at = (select log_started_at from latest_slow_run)\norder by qtime_sum desc\n;",
+          "rawSql": "with latest_slow_run as (\n  select log_started_at, log_ended_at\n  from slow_runs\n  where log_started_at between $__fromTime and $__toTime\n  order by log_started_at desc\n  limit 1\n), error_spans as (\n  -- StatusCode = 'Error' のみの span のみをだす\n  select\n    TraceId\n    , SpanId\n    , SpanName\n    , SpanAttributes\n    , Events.Attributes\n  from otel_traces\n  where Timestamp between (select log_started_at from latest_slow_run) and (select log_ended_at from latest_slow_run)\n    and StatusCode = 'Error'\n)\nselect\n  *\nfrom error_spans\n;",
           "refId": "A"
         }
       ],
-      "title": "時間範囲内で最新ベンチのスロークエリ",
+      "title": "新規パネル",
       "type": "table"
     },
     {
@@ -884,7 +1052,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 30
       },
       "id": 21,
       "panels": [],
@@ -919,7 +1087,7 @@
         "h": 13,
         "w": 4,
         "x": 0,
-        "y": 35
+        "y": 31
       },
       "id": 20,
       "options": {
@@ -1067,7 +1235,7 @@
         "h": 13,
         "w": 20,
         "x": 4,
-        "y": 35
+        "y": 31
       },
       "id": 18,
       "options": {
@@ -1089,7 +1257,7 @@
               "table": ""
             }
           },
-          "pluginVersion": "4.14.0",
+          "pluginVersion": "4.17.0",
           "queryType": "table",
           "rawSql": "with latest_slow_run as (\n  select log_started_at, log_ended_at\n  from slow_runs\n  where log_started_at between $__fromTime and $__toTime\n  order by log_started_at desc\n  limit 1\n), root_traces as (\n  -- TraceIdでグルーピング\n  -- 代表のSpanNameを抽出\n  select\n    TraceId as trace_id\n    , SpanAttributes['http.method'] as http_method\n    , SpanName as span_name\n  from otel_traces\n  where Timestamp between (select log_started_at from latest_slow_run) and (select log_ended_at from latest_slow_run)\n    and ParentSpanId = ''\n), traces as (\n  -- span_name: 代表スパン名\n  select\n    trace_id\n    , http_method\n    , min(span_name) as span_name\n    , count() as span_count\n    , sum(Duration) as sum_duration\n    , (select count() from otel_traces ot where ot.TraceId = trace_id and ot.SpanName like 'sql%') as sql_span_count\n  from otel_traces\n  join root_traces on trace_id = TraceId\n  group by trace_id, http_method\n)\n-- span_nameで更にグルーピング\n-- TraceIdは代表TraceId\n-- TraceIdという列名にすると、トレースへのリンクになる\n-- 平均span数が多いほど、N+1問題が起きている\nselect\n  span_name as \"span名\"\n  , http_method as \"method\"\n  , argMax(trace_id, sum_duration) as \"TraceId\"\n  , avg(span_count) as \"平均span数\"\n  , avg(sql_span_count) as \"平均sql_span数\"\n  , sum(span_count) as \"合計span数\"\n  , sum(sql_span_count) as \"合計sql_span数\"\n  , max(span_count) as \"最大span数\"\n  , max(sql_span_count) as \"最大sql_span数\"\n  , min(span_count) as \"最小span数\"\n  , min(sql_span_count) as \"最小sql_span数\"\nfrom traces\ngroup by span_name, http_method\norder by \"合計span数\" desc\n;",
           "refId": "A"
@@ -1104,7 +1272,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 44
       },
       "id": 23,
       "panels": [],
@@ -1124,7 +1292,7 @@
         "h": 15,
         "w": 24,
         "x": 0,
-        "y": 49
+        "y": 45
       },
       "id": 22,
       "options": {},
